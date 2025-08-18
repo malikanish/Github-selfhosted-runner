@@ -1,14 +1,38 @@
+# name: CI on Self-Hosted Runner
+
+# on:
+#   push:
+#     branches:
+#       - main   # sirf main branch par push hone pe 
+#   workflow_dispatch:  # optional: manual bhi allow 
+
+# jobs:
+#   test:
+#     runs-on: [self-hosted, ec2]   # yeh aapke EC2 ko target karega
+#     steps:
+#       - name: Print message
+#         run: echo "✅ Self-Hosted Runner triggered successfully!"
+
+#       - name: Show system info
+#         run: uname -a
+
+#       - name: List repo files
+#         run: ls -l
+
+#       - name: Wait for 5 minutes
+#         run: sleep 300   # 300 seconds = 5 minutes
+
 name: CI on Self-Hosted Runner
 
 on:
   push:
     branches:
-      - main   # sirf main branch par push hone pe 
-  workflow_dispatch:  # optional: manual bhi allow 
+      - main
+  workflow_dispatch:
 
 jobs:
   test:
-    runs-on: [self-hosted, ec2]   # yeh aapke EC2 ko target karega
+    runs-on: [self-hosted, ec2]
     steps:
       - name: Print message
         run: echo "✅ Self-Hosted Runner triggered successfully!"
@@ -19,5 +43,17 @@ jobs:
       - name: List repo files
         run: ls -l
 
+      - name: Scale ASG to 1
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          aws autoscaling set-desired-capacity \
+            --auto-scaling-group-name final-asg \
+            --desired-capacity 1 \
+            --region $AWS_DEFAULT_REGION
+
       - name: Wait for 5 minutes
-        run: sleep 300   # 300 seconds = 5 minutes
+        run: sleep 300
+      
