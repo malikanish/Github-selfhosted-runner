@@ -61,8 +61,8 @@ sudo ./svc.sh install
 sudo ./svc.sh start
 sudo ./svc.sh status
 
-# Auto shutdown 2 min after job
-# ---------------------------
+# Auto shutdown 2 min after jo
+# -------------------------------
 sudo shutdown -h +2
 
 
