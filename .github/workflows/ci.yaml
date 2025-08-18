@@ -31,7 +31,46 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  scale-and-run:
+    runs-on: ubuntu-latest  # temporary runner to scale ASG
+    env:
+      AWS_REGION: us-east-1
+      ASG_NAME: final-asg
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Configure AWS CLI
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get current desired capacity
+        id: get_capacity
+        run: |
+          CURRENT=$(aws autoscaling describe-auto-scaling-groups \
+            --auto-scaling-group-names $ASG_NAME \
+            --query "AutoScalingGroups[0].DesiredCapacity" --output text)
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+
+      - name: Increase ASG desired capacity by 1
+        run: |
+          NEW=$(( ${{ steps.get_capacity.outputs.current }} + 1 ))
+          echo "Scaling ASG to $NEW instances"
+          aws autoscaling set-desired-capacity \
+            --auto-scaling-group-name $ASG_NAME \
+            --desired-capacity $NEW \
+            --honor-cooldown
+
+      - name: Wait for new instance to be InService
+        run: |
+          echo "Waiting 60s for new instance to boot and register runner..."
+          sleep 120
+
+  run-on-self-hosted:
+    needs: scale-and-run
     runs-on: [self-hosted, ec2]
     steps:
       - name: Print message
@@ -43,17 +82,5 @@ jobs:
       - name: List repo files
         run: ls -l
 
-      - name: Scale ASG to 1
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: us-east-1
-        run: |
-          aws autoscaling set-desired-capacity \
-            --auto-scaling-group-name final-asg \
-            --desired-capacity 1 \
-            --region $AWS_DEFAULT_REGION
-
-      - name: Wait for 5 minutes
-        run: sleep 300
-      
+      - name: Wait for 2 minutes (optional)
+        run: sleep 120  # 300 seconds = 5 minutes
