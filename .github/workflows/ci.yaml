@@ -3,26 +3,18 @@ name: CI on Self-Hosted Runner
 on:
   push:
     branches:
-      - main
-  pull_request:
+      - main   # sirf main branch par push hone pe chalega
+  workflow_dispatch:  # optional: manual bhi allow kar dega
 
 jobs:
-  build:
-    runs-on: [self-hosted, ec2]   
+  test:
+    runs-on: [self-hosted, ec2]   # yeh aapke EC2 runner ko target karega
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - name: Print message
+        run: echo "✅ Self-Hosted Runner triggered successfully!"
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
+      - name: Show system info
+        run: uname -a
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run build
-        run: npm run build
-
-      - name: Run tests
-        run: npm test
+      - name: List repo files
+        run: ls -l
