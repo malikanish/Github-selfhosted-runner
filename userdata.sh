@@ -23,7 +23,7 @@ GH_REPO="Github-selfhosted-runner"
 REGION="us-east-1"
 SSM_PARAM_NAME="/github/selfhosted/pat"
 
-# Fetch GitHub PAT from SSM Parameter Store
+# Fetch GitHub PAT from SSM Parameter Storee
 GH_PAT=$(aws ssm get-parameter --name "$SSM_PARAM_NAME" --with-decryption --region $REGION --query "Parameter.Value" --output text)
 
 # -------------------------------
