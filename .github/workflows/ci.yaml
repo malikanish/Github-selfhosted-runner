@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main   # sirf main branch par push hoaa
-  workflow_dispatch:  # optional: manual bhi allow kr saktaa\\\a
+  workflow_dispatch:  # optional: manual bhi allow kr saktaa\\
 
 jobs:
   test:
@@ -152,3 +152,124 @@ jobs:
 #         "statusCode": 200,
 #         "body": f"ASG capacity updated {current} → {new_capacity}"
 #     }
+
+
+
+
+
+
+
+
+
+
+# import json
+# import boto3
+# import hmac
+# import hashlib
+# import os
+# import requests
+
+# # AWS clients
+# asg_client = boto3.client("autoscaling", region_name="us-east-1")
+# ssm_client = boto3.client("ssm", region_name="us-east-1")
+
+# # Environment variables (Lambda console)
+# ASG_NAME = os.environ["ASG_NAME"]
+# WEBHOOK_SECRET = os.environ["WEBHOOK_SECRET"]
+# GH_OWNER = os.environ["GH_OWNER"]
+# GH_REPO = os.environ["GH_REPO"]
+# GH_PAT_SSM = os.environ["SSM_PARAM_NAME"]  # SSM parameter for GitHub PAT
+# REGION = os.environ.get("REGION", "us-east-1")
+
+
+# def get_github_pat():
+#     """Fetch GitHub PAT from SSM Parameter Store"""
+#     resp = ssm_client.get_parameter(Name=GH_PAT_SSM, WithDecryption=True)
+#     return resp["Parameter"]["Value"]
+
+
+# def lambda_handler(event, context):
+#     print("=== Lambda Triggered ===")
+#     headers = event.get("headers", {}) or {}
+#     body = event.get("body", "")
+
+#     # Verify GitHub webhook signature
+#     signature = headers.get("x-hub-signature-256")
+#     if not signature:
+#         return {"statusCode": 400, "body": "Missing signature"}
+
+#     expected_sig = "sha256=" + hmac.new(
+#         WEBHOOK_SECRET.encode(), body.encode(), hashlib.sha256
+#     ).hexdigest()
+
+#     if not hmac.compare_digest(signature, expected_sig):
+#         return {"statusCode": 401, "body": "Invalid signature"}
+
+#     # Parse payload
+#     payload = json.loads(body)
+#     action = payload.get("action")
+#     runner_name = payload.get("workflow_job", {}).get("runner_name")
+
+#     # Update ASG to match total jobs (queued + in_progress)
+#     try:
+#         update_asg_to_total_jobs()
+#     except Exception as e:
+#         print("ASG update error:", str(e))
+
+#     # Delete completed runner
+#     if action == "completed" and runner_name:
+#         try:
+#             delete_runner(runner_name)
+#         except Exception as e:
+#             print("Delete runner error:", str(e))
+
+#     return {"statusCode": 200, "body": "Lambda executed successfully"}
+
+
+# def update_asg_to_total_jobs():
+#     """Sync ASG DesiredCapacity to total queued + running jobs"""
+#     gh_pat = get_github_pat()
+#     headers = {"Authorization": f"token {gh_pat}"}
+
+#     total_jobs = 0
+#     for status in ["in_progress", "queued"]:
+#         url = f"https://api.github.com/repos/{GH_OWNER}/{GH_REPO}/actions/runs?status={status}"
+#         resp = requests.get(url, headers=headers)
+#         resp.raise_for_status()
+#         data = resp.json()
+
+#         for run in data.get("workflow_runs", []):
+#             jobs_data = requests.get(run["jobs_url"], headers=headers).json()
+#             total_jobs += len(jobs_data.get("jobs", []))
+
+#     # Update ASG DesiredCapacity
+#     asg = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[ASG_NAME])
+#     current_capacity = asg["AutoScalingGroups"][0]["DesiredCapacity"]
+
+#     if current_capacity != total_jobs:
+#         asg_client.update_auto_scaling_group(
+#             AutoScalingGroupName=ASG_NAME, DesiredCapacity=total_jobs
+#         )
+#         print(f"ASG updated: {current_capacity} → {total_jobs}")
+#     else:
+#         print(f"ASG already in sync with total jobs: {total_jobs}")
+
+
+# def delete_runner(runner_name):
+#     """Delete completed GitHub self-hosted runner"""
+#     gh_pat = get_github_pat()
+#     headers = {"Authorization": f"token {gh_pat}"}
+
+#     runners_url = f"https://api.github.com/repos/{GH_OWNER}/{GH_REPO}/actions/runners"
+#     runners_resp = requests.get(runners_url, headers=headers).json()
+#     runner_id = next(
+#         (r["id"] for r in runners_resp.get("runners", []) if r["name"] == runner_name), None
+#     )
+
+#     if runner_id:
+#         del_url = f"https://api.github.com/repos/{GH_OWNER}/{GH_REPO}/actions/runners/{runner_id}"
+#         del_resp = requests.delete(del_url, headers=headers)
+#         if del_resp.status_code == 204:
+#             print(f"Runner {runner_name} deleted successfully")
+#         else:
+#             print(f"Failed to delete runner {runner_name}: {del_resp.text}")
