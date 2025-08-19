@@ -71,7 +71,7 @@ chmod +x *.sh
 chown -R ubuntu:ubuntu $RUNNER_DIR
 
 # -------------------------------
-# Register runner with GitHub
+# Register runner with GitHubbb
 # -------------------------------
 RUNNER_TOKEN=$(curl -s -X POST -H "Authorization: token ${GH_PAT}" \
   https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/runners/registration-token | jq -r .token)
