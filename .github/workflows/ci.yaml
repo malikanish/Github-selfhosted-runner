@@ -20,7 +20,7 @@ jobs:
         run: ls -l
 
       - name: Wait for 5 minutes
-        run: sleep 300   # 100secondsssddddaabccdddcccccssssssddddaa
+        run: sleep 300   # 100secondsssddddaabccdddcccccssssssd
 # name: CI on Self-Hosted Runneraa
 
 # on:
