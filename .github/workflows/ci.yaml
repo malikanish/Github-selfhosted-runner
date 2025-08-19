@@ -3,7 +3,7 @@ name: CI on Self-Hosted Runner
 on:
   push:
     branches:
-      - main   # sirf main branch par push ho
+      - main   # sirf main branch par push hoaa
   workflow_dispatch:  # optional: manual bhi allow kr saktaa\\\
 
 jobs:
