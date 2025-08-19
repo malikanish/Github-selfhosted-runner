@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main   # sirf main branch par push hone peee
-  workflow_dispatch:  # optional: manual bhi allow 
+  workflow_dispatch:  # optional: manual bhi allow kr skty
 
 jobs:
   test:
