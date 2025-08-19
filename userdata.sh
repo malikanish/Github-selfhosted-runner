@@ -31,7 +31,7 @@ GH_PAT=$(aws ssm get-parameter --name "$SSM_PARAM_NAME" --with-decryption --regi
 # -------------------------------
 # Update ASG Desired Capacity (1 job = 1 instance)
 # -------------------------------
-ASG_NAME="final-asg"   # apna Auto Scaling Group ka naam daalna
+ASG_NAME="final-asg"   # apna Auto Scaling Group ka naam d
 
 # Get current desired capacity
 CURRENT_CAPACITY=$(aws autoscaling describe-auto-scaling-groups \
