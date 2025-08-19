@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main   # sirf main branch par push ho
-  workflow_dispatch:  # optional: manual bhi allow kr sakta hai
+  workflow_dispatch:  # optional: manual bhi allow kr saktaa
 
 jobs:
   test:
