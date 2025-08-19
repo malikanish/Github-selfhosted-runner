@@ -84,3 +84,72 @@ jobs:
 
 #       - name: Wait for 2 minutes (optional)
 #         run: sleep 120  # 300 seconds = 5 minutes
+
+
+
+# import json
+# import boto3
+# import hmac
+# import hashlib
+# import os
+
+# asg_client = boto3.client("autoscaling", region_name="us-east-1")
+
+# ASG_NAME = os.environ["ASG_NAME"]       # e.g. final-asg
+# WEBHOOK_SECRET = os.environ["WEBHOOK_SECRET"]   # same as GitHub webhook secret
+
+
+# def lambda_handler(event, context):
+#     # Debug log
+#     print("Received event:", json.dumps(event))
+
+#     # 1. GitHub webhook signature verify karo
+#     headers = event.get("headers", {}) or {}
+#     signature = headers.get("x-hub-signature-256")
+#     body = event.get("body", "")
+
+#     if not signature:
+#         return {"statusCode": 400, "body": "Missing GitHub signature"}
+
+#     expected_sig = "sha256=" + hmac.new(
+#         WEBHOOK_SECRET.encode(),
+#         body.encode(),
+#         hashlib.sha256
+#     ).hexdigest()
+
+#     if not hmac.compare_digest(signature, expected_sig):
+#         return {"statusCode": 401, "body": "Invalid signature"}
+
+#     # 2. Parse webhook payload
+#     try:
+#         payload = json.loads(body)
+#     except Exception as e:
+#         return {"statusCode": 400, "body": f"Invalid JSON body: {str(e)}"}
+
+#     action = payload.get("action")
+#     job_status = payload.get("workflow_job", {}).get("status")
+
+#     if action == "queued":
+#         # Job start hone wali hai → ASG capacity +1
+#         return update_asg(1)
+#     elif action == "completed":
+#         # Job complete/failed → ASG capacity -1
+#         return update_asg(-1)
+
+#     return {"statusCode": 200, "body": "No scaling change"}
+
+
+# def update_asg(change):
+#     resp = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[ASG_NAME])
+#     current = resp["AutoScalingGroups"][0]["DesiredCapacity"]
+#     new_capacity = max(0, current + change)  # avoid negative
+
+#     asg_client.update_auto_scaling_group(
+#         AutoScalingGroupName=ASG_NAME,
+#         DesiredCapacity=new_capacity
+#     )
+
+#     return {
+#         "statusCode": 200,
+#         "body": f"ASG capacity updated {current} → {new_capacity}"
+#     }
