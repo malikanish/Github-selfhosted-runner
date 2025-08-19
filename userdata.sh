@@ -26,6 +26,31 @@ SSM_PARAM_NAME="/github/selfhosted/pat"
 # Fetch GitHub PAT from SSM Parameter Storee
 GH_PAT=$(aws ssm get-parameter --name "$SSM_PARAM_NAME" --with-decryption --region $REGION --query "Parameter.Value" --output text)
 
+
+
+# -------------------------------
+# Update ASG Desired Capacity (1 job = 1 instance)
+# -------------------------------
+ASG_NAME="final-asg"   # apna Auto Scaling Group ka naam daalna
+
+# Get current desired capacity
+CURRENT_CAPACITY=$(aws autoscaling describe-auto-scaling-groups \
+  --auto-scaling-group-names $ASG_NAME \
+  --query "AutoScalingGroups[0].DesiredCapacity" \
+  --output text --region $REGION)
+
+# Increase by 1 (so har job alag instance pe run hogi)
+NEW_CAPACITY=$((CURRENT_CAPACITY + 1))
+
+# Update ASG desired capacity
+aws autoscaling update-auto-scaling-group \
+  --auto-scaling-group-name $ASG_NAME \
+  --desired-capacity $NEW_CAPACITY \
+  --region $REGION
+
+echo "ASG Desired Capacity updated: $CURRENT_CAPACITY → $NEW_CAPACITY"
+
+
 # -------------------------------
 # Download and setup latest GitHub Runner
 # -------------------------------
@@ -55,15 +80,15 @@ RUNNER_TOKEN=$(curl -s -X POST -H "Authorization: token ${GH_PAT}" \
 sudo -u ubuntu ./config.sh --url https://github.com/${GH_OWNER}/${GH_REPO} --token ${RUNNER_TOKEN} --unattended --labels ec2
 
 # -------------------------------
-# Start runner service (as root)
+# Start runner service 
 # -------------------------------
 sudo ./svc.sh install
 sudo ./svc.sh start
 sudo ./svc.sh status
 
-# Auto shutdown 2 min after jo
+# Auto shutdown 20 min after jo
 # -------------------------------
-sudo shutdown -h +2
+sudo shutdown -h +20
 
 
 exit 0
