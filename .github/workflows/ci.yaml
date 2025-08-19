@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - main   # sirf main branch par push hone peee
-  workflow_dispatch:  # optional: manual bhi allow kr skty
+  workflow_dispatch:  # optional: manual bhi allow kr sakta hai
 
 jobs:
   test:
-    runs-on: [self-hosted, ec2]   # yeh aapke EC2 ko target karega
+    runs-on: [self-hosted, ec2]   # yeh aapke EC2 ko target kare
     steps:
       - name: Print message
         run: echo "✅ Self-Hosted Runner triggered successfully!"
@@ -20,7 +20,7 @@ jobs:
         run: ls -l
 
       - name: Wait for 5 minutes
-        run: sleep 300   # 300 seconds = 5 minutes
+        run: sleep 200   # 100seconds = 5 minutes
 
 # name: CI on Self-Hosted Runner
 
