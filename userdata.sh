@@ -27,31 +27,6 @@ SSM_PARAM_NAME="/github/selfhosted/pat"
 GH_PAT=$(aws ssm get-parameter --name "$SSM_PARAM_NAME" --with-decryption --region $REGION --query "Parameter.Value" --output text)
 
 
-
-# -------------------------------
-# Update ASG Desired Capacity (1 job = 1 insta
-# ----------------------------
-ASG_NAME="final-asg"   # apna Auto Scaling Group ka naam d
-
-# Get current desired capacity
-CURRENT_CAPACITY=$(aws autoscaling describe-auto-scaling-groups \
-  --auto-scaling-group-names $ASG_NAME \
-  --query "AutoScalingGroups[0].DesiredCapacity" \
-  --output text --region $REGION)
-
-# Increase by 1 (so har job alag instance pe run hogi)
-NEW_CAPACITY=$((CURRENT_CAPACITY + 1))
-
-# Update ASG desired capacity
-aws autoscaling update-auto-scaling-group \
-  --auto-scaling-group-name $ASG_NAME \
-  --desired-capacity $NEW_CAPACITY \
-  --region $REGION
-
-echo "ASG Desired Capacity updated: $CURRENT_CAPACITY → $NEW_CAPACITY"
-
-
-# -------------------------------
 # Download and setup latest GitHub Runner
 # -------------------------------
 RUNNER_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r .tag_name)
