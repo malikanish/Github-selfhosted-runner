@@ -2,7 +2,7 @@ name: CI on Self-Hosted Runner
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]  # PR open ya update hone par chalega
+    types: [opened, synchronize, reopened]  # PR open ya update hone par chal
      # sirf main branch par push hoaa
   workflow_dispatch:  # optional: manual bhi allow kr saavvvv
 
