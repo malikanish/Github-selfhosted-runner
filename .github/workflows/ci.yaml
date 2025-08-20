@@ -1,9 +1,9 @@
 name: CI on Self-Hosted Runner
 
 on:
-  push:
-    branches:
-      - main   # sirf main branch par push hoaa
+  pull_request:
+    types: [opened, synchronize, reopened]  # PR open ya update hone par chalega
+     # sirf main branch par push hoaa
   workflow_dispatch:  # optional: manual bhi allow kr saavvvv
 
 jobs:
