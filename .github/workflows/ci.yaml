@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: [self-hosted, ec2]   # yeh aapke EC2 ko targee
+    runs-on: [self-hosted, ec2]   # yeh aapke EC2 ko targeett
     steps:
       - name: Print message
         run: echo "✅ Self-Hosted Runner triggered successfully!"
