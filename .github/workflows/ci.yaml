@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - main   # sirf main branch par push hoaa
-  workflow_dispatch:  # optional: manual bhi allow kr sakta
+  workflow_dispatch:  # optional: manual bhi allow kr s
 
 jobs:
   test:
-    runs-on: [self-hosted, ec2]   # yeh aapke EC2 ko targeett
+    runs-on: [self-hosted, ec2]   # yeh aapke EC2 ko targee
     steps:
       - name: Print message
         run: echo "✅ Self-Hosted Runner triggered successfully!"
