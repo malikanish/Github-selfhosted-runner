@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main   # sirf main branch par push hoaa
-  workflow_dispatch:  # optional: manual bhi allow kr saktaa\\
+  workflow_dispatch:  # optional: manual bhi allow kr sakta
 
 jobs:
   test:
