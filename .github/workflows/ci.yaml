@@ -419,3 +419,253 @@ jobs:
 #             print(f"Failed to delete runner {runner_name}: {del_resp.text}")
 
 
+
+
+# final 
+
+
+# import json
+# import boto3
+# import hmac
+# import hashlib
+# import os
+# import requests
+
+# # AWS clients
+# asg_client = boto3.client("autoscaling", region_name="us-east-1")
+# ssm_client = boto3.client("ssm", region_name="us-east-1")
+
+# # Environment variables (Lambda console)
+# ASG_NAME = os.environ["ASG_NAME"]
+# WEBHOOK_SECRET = os.environ["WEBHOOK_SECRET"]
+# GH_OWNER = os.environ["GH_OWNER"]
+# GH_REPO = os.environ["GH_REPO"]
+# GH_PAT_SSM = os.environ["SSM_PARAM_NAME"]  # SSM parameter for GitHub PAT
+# REGION = os.environ.get("REGION", "us-east-1")
+
+# def get_github_pat():
+#     """Fetch GitHub PAT from SSM Parameter Store"""
+#     resp = ssm_client.get_parameter(Name=GH_PAT_SSM, WithDecryption=True)
+#     return resp["Parameter"]["Value"]
+
+# def lambda_handler(event, context):
+#     print("=== Lambda Triggered ===")
+#     headers = event.get("headers", {}) or {}
+#     body = event.get("body", "")
+    
+#     # Add timeout handling
+#     remaining_time = context.get_remaining_time_in_millis()
+#     print(f"Remaining execution time: {remaining_time}ms")
+    
+#     # Verify GitHub webhook signature
+#     signature = headers.get("x-hub-signature-256")
+#     if not signature:
+#         return {"statusCode": 400, "body": "Missing signature"}
+    
+#     expected_sig = "sha256=" + hmac.new(
+#         WEBHOOK_SECRET.encode(), body.encode(), hashlib.sha256
+#     ).hexdigest()
+    
+#     if not hmac.compare_digest(signature, expected_sig):
+#         return {"statusCode": 401, "body": "Invalid signature"}
+    
+#     # Parse payload safely
+#     try:
+#         payload = json.loads(body)
+#         action = payload.get("action")
+#         runner_name = payload.get("workflow_job", {}).get("runner_name")
+#     except json.JSONDecodeError:
+#         print("Invalid JSON payload")
+#         return {"statusCode": 400, "body": "Invalid JSON"}
+    
+#     # Update ASG to match total jobs (with timeout protection)
+#     if remaining_time > 10000:  # Only if we have more than 10 seconds left
+#         try:
+#             update_asg_to_total_jobs()
+#         except Exception as e:
+#             print("ASG update error:", str(e))
+#     else:
+#         print("Skipping ASG update due to low remaining time")
+    
+#     # Delete completed runner
+#     if action == "completed" and runner_name:
+#         try:
+#             delete_runner(runner_name)
+#         except Exception as e:
+#             print("Delete runner error:", str(e))
+    
+#     # Clean up misconfigured and offline runners (with timeout protection)
+#     remaining_time = context.get_remaining_time_in_millis()
+#     if remaining_time > 5000:  # Only if we have more than 5 seconds left
+#         try:
+#             cleanup_misconfigured_and_offline_runners()
+#         except Exception as e:
+#             print("Cleanup misconfigured/offline runners error:", str(e))
+#     else:
+#         print("Skipping cleanup due to low remaining time")
+    
+#     return {"statusCode": 200, "body": "Lambda executed successfully"}
+
+# def update_asg_to_total_jobs():
+#     """Sync ASG DesiredCapacity to total queued + running jobs (properly counting parallel jobs)"""
+#     gh_pat = get_github_pat()
+#     headers = {"Authorization": f"token {gh_pat}"}
+#     total_jobs = 0
+    
+#     print("=== Calculating Total Jobs Needed ===")
+    
+#     # Get all workflow runs that are either queued or in_progress
+#     for status in ["in_progress", "queued"]:
+#         try:
+#             url = f"https://api.github.com/repos/{GH_OWNER}/{GH_REPO}/actions/runs?status={status}&per_page=100"
+#             resp = requests.get(url, headers=headers, timeout=10)
+#             resp.raise_for_status()
+#             data = resp.json()
+            
+#             print(f"Found {len(data.get('workflow_runs', []))} workflow runs with status: {status}")
+            
+#             for run in data.get("workflow_runs", []):
+#                 run_id = run.get("id")
+#                 run_name = run.get("name", "Unknown")
+#                 run_status = run.get("status")
+                
+#                 print(f"Processing run: {run_name} (ID: {run_id}, Status: {run_status})")
+                
+#                 # Get jobs for this workflow run
+#                 jobs_resp = requests.get(run["jobs_url"], headers=headers, timeout=10)
+#                 jobs_resp.raise_for_status()
+#                 jobs_data = jobs_resp.json()
+                
+#                 run_job_count = 0
+#                 for job in jobs_data.get("jobs", []):
+#                     job_name = job.get("name", "Unknown")
+#                     job_status = job.get("status", "Unknown")
+#                     job_conclusion = job.get("conclusion")
+                    
+#                     # Count jobs that need runners (queued, in_progress, or waiting)
+#                     if job_status in ["queued", "in_progress"] or (job_status == "waiting" and not job_conclusion):
+#                         print(f"  - Job: {job_name} (Status: {job_status}, Conclusion: {job_conclusion}) - NEEDS RUNNER")
+#                         run_job_count += 1
+#                     else:
+#                         print(f"  - Job: {job_name} (Status: {job_status}, Conclusion: {job_conclusion}) - COMPLETED")
+                
+#                 total_jobs += run_job_count
+#                 print(f"  Total jobs for this run: {run_job_count}")
+                
+#         except requests.exceptions.Timeout:
+#             print(f"Timeout getting workflow runs for status: {status}")
+#         except Exception as e:
+#             print(f"Error getting workflow runs for status {status}: {str(e)}")
+    
+#     print(f"=== TOTAL JOBS REQUIRING RUNNERS: {total_jobs} ===")
+    
+#     # Get current ASG capacity
+#     asg = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[ASG_NAME])
+#     current_capacity = asg["AutoScalingGroups"][0]["DesiredCapacity"]
+#     max_capacity = asg["AutoScalingGroups"][0]["MaxSize"]
+    
+#     # Ensure we don't exceed max capacity
+#     desired_capacity = min(total_jobs, max_capacity)
+    
+#     print(f"Current ASG capacity: {current_capacity}")
+#     print(f"Max ASG capacity: {max_capacity}")
+#     print(f"Calculated desired capacity: {desired_capacity}")
+    
+#     if current_capacity != desired_capacity:
+#         asg_client.update_auto_scaling_group(
+#             AutoScalingGroupName=ASG_NAME, DesiredCapacity=desired_capacity
+#         )
+#         print(f"ASG UPDATED: {current_capacity} → {desired_capacity}")
+#     else:
+#         print(f"ASG already in sync with required jobs: {desired_capacity}")
+
+# def delete_runner(runner_name):
+#     """Delete completed GitHub self-hosted runner"""
+#     gh_pat = get_github_pat()
+#     headers = {"Authorization": f"token {gh_pat}"}
+    
+#     try:
+#         runners_url = f"https://api.github.com/repos/{GH_OWNER}/{GH_REPO}/actions/runners"
+#         runners_resp = requests.get(runners_url, headers=headers, timeout=10).json()
+        
+#         runner_id = next(
+#             (r["id"] for r in runners_resp.get("runners", []) if r["name"] == runner_name), None
+#         )
+        
+#         if runner_id:
+#             del_url = f"https://api.github.com/repos/{GH_OWNER}/{GH_REPO}/actions/runners/{runner_id}"
+#             del_resp = requests.delete(del_url, headers=headers, timeout=10)
+            
+#             if del_resp.status_code == 204:
+#                 print(f"Runner {runner_name} deleted successfully")
+#             else:
+#                 print(f"Failed to delete runner {runner_name}: {del_resp.text}")
+#         else:
+#             print(f"Runner {runner_name} not found")
+            
+#     except requests.exceptions.Timeout:
+#         print(f"Timeout deleting runner {runner_name}")
+#     except Exception as e:
+#         print(f"Error deleting runner {runner_name}: {str(e)}")
+
+# def cleanup_misconfigured_and_offline_runners():
+#     """Delete misconfigured and offline GitHub runners with better error handling"""
+#     gh_pat = get_github_pat()
+#     headers = {"Authorization": f"token {gh_pat}"}
+    
+#     try:
+#         runners_url = f"https://api.github.com/repos/{GH_OWNER}/{GH_REPO}/actions/runners"
+#         runners_resp = requests.get(runners_url, headers=headers, timeout=10)
+#         runners_resp.raise_for_status()
+        
+#         runners_data = runners_resp.json()
+#         deleted_count = 0
+        
+#         for runner in runners_data.get("runners", []):
+#             runner_id = runner.get("id")
+#             runner_name = runner.get("name", "Unknown")
+#             runner_status = runner.get("status", "").lower()
+#             runner_busy = runner.get("busy", False)  # Check if runner is busy
+            
+#             print(f"Checking runner: {runner_name}, Status: {runner_status}, Busy: {runner_busy}")
+            
+#             # Only delete offline runners or idle runners that are NOT busy
+#             should_delete = False
+            
+#             if runner_status == "offline":
+#                 print(f"Found offline runner: {runner_name}")
+#                 should_delete = True
+#             elif runner_status == "online" and not runner_busy:
+#                 # Only delete if truly idle (not busy)
+#                 print(f"Found idle runner: {runner_name}")
+#                 should_delete = True
+            
+#             if should_delete and runner_id:
+#                 try:
+#                     del_url = f"https://api.github.com/repos/{GH_OWNER}/{GH_REPO}/actions/runners/{runner_id}"
+#                     del_resp = requests.delete(del_url, headers=headers, timeout=10)
+                    
+#                     if del_resp.status_code == 204:
+#                         print(f"Successfully deleted runner {runner_name}")
+#                         deleted_count += 1
+#                     elif del_resp.status_code == 422:
+#                         # Runner is busy, skip it
+#                         print(f"Skipping busy runner {runner_name}")
+#                     else:
+#                         print(f"Failed to delete runner {runner_name}: HTTP {del_resp.status_code}")
+#                 except requests.exceptions.Timeout:
+#                     print(f"Timeout deleting runner {runner_name}, continuing...")
+#                 except Exception as e:
+#                     print(f"Error deleting runner {runner_name}: {str(e)}")
+#             else:
+#                 print(f"Keeping runner {runner_name} (Status: {runner_status}, Busy: {runner_busy})")
+        
+#         if deleted_count > 0:
+#             print(f"Total {deleted_count} runners cleaned up")
+#         else:
+#             print("No runners found to cleanup")
+            
+#     except requests.exceptions.Timeout:
+#         print("Timeout getting runners list, skipping cleanup")
+#     except Exception as e:
+#         print(f"Error in cleanup function: {str(e)}")
