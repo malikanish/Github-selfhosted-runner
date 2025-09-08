@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: [ec2]   # yeh aapke EC2 ko targeettssss
+    runs-on: [ec2]   # yeh aapke EC2 ko targeettssssa
     steps:
       - name: Print message
         run: echo "✅ Self-Hosted Runner triggered successfully!"
